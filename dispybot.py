@@ -1,78 +1,84 @@
-import discord
-from discord import app_commands
-
-import traceback
-
-# The guild in which this slash command will be registered.
-# It is recommended to have a test guild to separate from your "production" bot
-TEST_GUILD = discord.Object(0)
-
-
-class MyClient(discord.Client):
-    def __init__(self) -> None:
-        # Just default intents and a `discord.Client` instance
-        # We don't need a `commands.Bot` instance because we are not
-        # creating text-based commands.
-        intents = discord.Intents.default()
-        super().__init__(intents=intents)
-
-        # We need an `discord.app_commands.CommandTree` instance
-        # to register application commands (slash commands in this case)
-        self.tree = app_commands.CommandTree(self)
-
-    async def on_ready(self):
-        print(f'Logged in as {self.user} (ID: {self.user.id})')
-        print('------')
-
-    async def setup_hook(self) -> None:
-        # Sync the application command with Discord.
-        await self.tree.sync(guild=TEST_GUILD)
+import discord, requests, re, os, json, sys, traceback
+from termcolor import colored as c
+from getdata import getapitoken, getsong
+from discord.ext import commands
+prefixes = ["!","£","$","%","^","&","*"]
+intents = discord.Intents.all()
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
+except FileNotFoundError:
+    print(c("[!] Config File Not Found","red"))
+    sys.exit()
+try:
+    token = config["token"]
+except KeyError:
+    print(c("[!] Token Not Found","red"))
 
 
-class Feedback(discord.ui.Modal, title='Feedback'):
-    # Our modal classes MUST subclass `discord.ui.Modal`,
-    # but the title can be whatever you want.
 
-    # This will be a short input, where the user can enter their name
-    # It will also have a placeholder, as denoted by the `placeholder` kwarg.
-    # By default, it is required and is a short-style input which is exactly
-    # what we want.
-    name = discord.ui.TextInput(
-        label='Name',
-        placeholder='Your name here...',
-    )
+tempowave = commands.Bot(command_prefix=prefixes,intents=intents)
+tempowave.remove_command("help")
 
-    # This is a longer, paragraph style input, where user can submit feedback
-    # Unlike the name, it is not required. If filled out, however, it will
-    # only accept a maximum of 300 characters, as denoted by the
-    # `max_length=300` kwarg.
-    feedback = discord.ui.TextInput(
-        label='What do you think of this new feature?',
-        style=discord.TextStyle.long,
-        placeholder='Type your feedback here...',
-        required=False,
-        max_length=300,
-    )
+@tempowave.command()
+async def exit(ctx):
+    sys.exit()
+@tempowave.command()
+async def ping(ctx):
+    await ctx.send(f"Pong! {round(tempowave.latency * 1000)}ms")
+@tempowave.command()
+async def help(ctx):
+    await ctx.send(f"**{tempowave.user.name} Commands**\n\n`!ping` - Pong!\n`!say` - Say something through the bot\n`!exit` - Exit the Bot\n`!upload 'url'`- Upload a song to the server\n\n")
+@tempowave.command()
+async def say(ctx,*,message):
+    await ctx.send(message)
+@tempowave.command()
+async def upload(ctx,url):
+    if url == None:
+        await ctx.send("Error. No URL Provided.")
+        pass
+    if re.search(r"https://open.spotify.com",url):
+        if re.search("playlist",url):
+            await ctx.send("Error. Cannot Upload Playlist.")
+            pass
+        else:
+            member = ctx.author
+            embed = discord.Embed(title="TempoWave",description="Soon your song will be uploaded on our systems please wait...",colour=0x00b0f4)
+            embed.set_footer(text="TempoWave Upload System")    
+            await ctx.send(embed=embed)
+            os.chdir("supload/songs")
+            os.system(f"spotdl {url}")
+            os.chdir("/workspaces/imgrepo")
+            # os.system("python3 getsong.py")
+            r = getapitoken()
+            track_id = url.split('/')[-1].split('?')[0]
+            s = getsong(r, track_id)
+            author = s[0]
+            title = s[1] 
+            newsong = discord.Embed(title="TempoWave",description=f"New Song\nTitle: {title}\nArtist: {author}",colour=0x00b0f4)
+            newsong.set_footer(text=f"TempoWave Upload System - Uploaded By {member.name}")
+            ch = tempowave.get_channel(1159760219178537012)
+            await ch.send(content=f"<@&1159763810551349309>",embed=newsong)
+            os.system("clear")
+    else:
+        member = ctx.author
+        embed = discord.Embed(title="TempoWave",description="Song URL did not contain a spotify link...",colour=0x00b0f4)
+        embed.set_footer(text="TempoWave Upload System")   
+        await ctx.send(content=f"<@{member.id}>",embed=embed)
+@tempowave.command()
+async def embed(ctx):
+    embed = discord.Embed(title="TempoWave Support Rules",
+                      description="1. Choose the Correct Category: Select the appropriate ticket category or channel based on the nature of your issue or request. This helps route your ticket to the right support team.\n\n2. Be Concise: Keep your ticket concise and to the point. Avoid unnecessary backstory or unrelated information.\n\n3. Use Proper Formatting: Use proper formatting when necessary to make your ticket easier to read. For example, use bullet points or numbered lists for multiple issues or steps.\n\n4, Be Patient: Support staff may take some time to respond, especially during busy periods. Be patient and avoid spamming the channel with repeated messages.\n\n5. Follow Server Rules: Adhere to the server's general rules and guidelines while interacting in the ticketing system.",
+                      colour=0x00b0f4)
 
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f'Thanks for your feedback, {self.name.value}!', ephemeral=True)
+    embed.set_footer(text="TempoWave LLC")
+    await ctx.send(embed=embed)
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
-
-        # Make sure we know what the error actually is
-        traceback.print_exception(type(error), error, error.__traceback__)
-
-
-client = MyClient()
-
-
-@client.tree.command(guild=TEST_GUILD, description="Submit feedback")
-async def feedback(interaction: discord.Interaction):
-    # Send the modal with an instance of our `Feedback` class
-    # Since modals require an interaction, they cannot be done as a response to a text command.
-    # They can only be done as a response to either an application command or a button press.
-    await interaction.response.send_modal(Feedback())
-
-
-client.run('token')
+@tempowave.event
+async def on_error(ctx):
+    await ctx.send("An error occurred.")
+try:
+    tempowave.run(token)
+except discord.LoginFailure as e:
+    print(e)
+    print(c(f"[!] Login Failed [!]","red"))
