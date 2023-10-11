@@ -1,0 +1,13 @@
+
+command: dir
+user: guest
+output: PyMal			   config.json	getsong.py  s.mp3	twp.mp3
+Troye\ Sivan\ -\ Rush.mp3  dispybot	personal    school
+__pycache__		   dtg		public	    spotdlsong
+bkup			   getdata.py	pyOS	    supload
+
+command: cd public
+user: guest
+command: dir
+user: guest
+output: categories  index.xml  sitemap.xml  tags

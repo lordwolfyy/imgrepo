@@ -1,0 +1,2 @@
+def skilIssue():
+    os.system("")

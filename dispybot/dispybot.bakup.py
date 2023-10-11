@@ -1,8 +1,8 @@
-import discord, requests, re, os, json, sys, traceback
+import discord, requests, re, os, json, sys, traceback, ffmpeg, time, random
 from termcolor import colored as c
 from getdata import getapitoken, getsong
 from discord.ext import commands
-prefixes = ["!","£","$","%","^","&","*"]
+prefixes = ["!","£","$","%","^","&","*","tempo"]
 intents = discord.Intents.all()
 try:
     with open("config.json", "r") as f:
@@ -17,7 +17,7 @@ except KeyError:
 
 
 
-tempowave = commands.Bot(command_prefix=prefixes,intents=intents)
+tempowave = commands.Bot(command_prefix=prefixes,intents=intents,status=discord.Status.idle)
 tempowave.remove_command("help")
 
 @tempowave.command()
@@ -49,13 +49,13 @@ async def upload(ctx,url):
             os.chdir("supload/songs")
             os.system(f"spotdl {url}")
             os.chdir("/workspaces/imgrepo")
-            # os.system("python3 getsong.py")
+            os.system("python3 getsong.py")
             r = getapitoken()
             track_id = url.split('/')[-1].split('?')[0]
             s = getsong(r, track_id)
             author = s[0]
             title = s[1] 
-            newsong = discord.Embed(title="TempoWave",description=f"New Song\nTitle: {title}\nArtist: {author}",colour=0x00b0f4)
+            newsong = discord.Embed(title="TempoWave",description=f"\nTitle: {title}\nArtist: {author}",colour=0x00b0f4)
             newsong.set_footer(text=f"TempoWave Upload System - Uploaded By {member.name}")
             ch = tempowave.get_channel(1159760219178537012)
             await ch.send(content=f"<@&1159763810551349309>",embed=newsong)
@@ -73,10 +73,10 @@ async def embed(ctx):
 
     embed.set_footer(text="TempoWave LLC")
     await ctx.send(embed=embed)
-
 @tempowave.event
-async def on_error(ctx):
-    await ctx.send("An error occurred.")
+async def on_ready():
+    print("bot is ready")
+    await tempowave.change_presence(status=discord.Status.dnd, activity=discord.Game("https://tempowave.xyx"))
 try:
     tempowave.run(token)
 except discord.LoginFailure as e:

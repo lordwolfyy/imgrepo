@@ -1,4 +1,4 @@
-import requests
+import requests, re
 def getapitoken():
     data = {
         'grant_type': 'client_credentials',
@@ -11,11 +11,11 @@ def getapitoken():
     print(x['access_token'])
     return x['access_token']
 
-def getsong(authtoken, id):
+def getsong(authtoken, x):
     headers = {
         'Authorization': f'Bearer {authtoken}',
     }
-    response = requests.get(f'https://api.spotify.com/v1/tracks/{id}', headers=headers)
+    response = requests.get(f'https://api.spotify.com/v1/tracks/{x}', headers=headers)
     x = response.json()
     author = x['artists'][0]['name']
     title = x['name']
